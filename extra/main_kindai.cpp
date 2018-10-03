@@ -16,7 +16,7 @@
 #include <vector>
 
 // VertexBufferObject wrapper
-VertexBufferObject VBO, VBO2;
+VertexBufferObject VBO;
 bool is_drawn = false;
 bool tri_drawing_in_process = false;
 int current_tri_vertice = 0;
@@ -32,8 +32,27 @@ static void cursor_position_callback(GLFWwindow *window, double xpos, double ypo
         double xworld = ((xpos / double(width)) * 2) - 1;
         double yworld = (((height - 1 - ypos) / double(height)) * 2) - 1; // NOTE: y axis is flipped in glfw
 
-        V[current_tri_index].col(current_tri_vertice) << xworld, yworld;
-        VBO.update(V[current_tri_index]);
+        // V[current_tri_index].col(current_tri_vertice) << xworld, yworld;
+        // VBO.update(V[current_tri_index]);
+        // after first click
+        if (current_tri_vertice == 1)
+        {
+            // if(V[current_tri_index].cols() == 1)
+            //     V[current_tri_index].conservativeResize(Eigen::NoChange, 2);
+
+            V[current_tri_index].col(1) << xworld, yworld;
+            VBO.update(V[current_tri_index]);
+        }
+
+        // after second click
+        if (current_tri_vertice == 2)
+        {
+            // if (V[current_tri_index].cols() == 2)
+            //     V[current_tri_index].conservativeResize(Eigen::NoChange, 3);
+
+            V[current_tri_index].col(2) << xworld, yworld;
+            VBO.update(V[current_tri_index]);
+        }
     }
 }
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
@@ -97,7 +116,7 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
         // }
     }
     // Upload the change to the GPU
-    VBO.update(V[0]);
+    VBO.update(V[current_tri_index]);
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)

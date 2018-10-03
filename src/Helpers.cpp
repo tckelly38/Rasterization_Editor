@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <fstream>
-#define GL_SILENCE_DEPRECATION
 
 void VertexArrayObject::init()
 {
@@ -24,51 +23,48 @@ void VertexArrayObject::free()
 
 void VertexBufferObject::init()
 {
-  glGenBuffers(1,&id);
+  glGenBuffers(1, &id);
   check_gl_error();
 }
 
 void VertexBufferObject::bind()
 {
-  glBindBuffer(GL_ARRAY_BUFFER,id);
+  glBindBuffer(GL_ARRAY_BUFFER, id);
   check_gl_error();
 }
 
 void VertexBufferObject::free()
 {
-  glDeleteBuffers(1,&id);
+  glDeleteBuffers(1, &id);
   check_gl_error();
 }
 
-void VertexBufferObject::update(const Eigen::MatrixXf& M)
+void VertexBufferObject::update(const Eigen::MatrixXf &M)
 {
   assert(id != 0);
   glBindBuffer(GL_ARRAY_BUFFER, id);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float)*M.size(), M.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * M.size(), M.data(), GL_DYNAMIC_DRAW);
   rows = M.rows();
   cols = M.cols();
   check_gl_error();
 }
 
 bool Program::init(
-  const std::string &vertex_shader_string,
-  const std::string &fragment_shader_string,
-  const std::string &geometry_shader_string,
-  const std::string &fragment_data_name)
+    const std::string &vertex_shader_string,
+    const std::string &fragment_shader_string,
+    const std::string &fragment_data_name)
 {
   using namespace std;
   vertex_shader = create_shader_helper(GL_VERTEX_SHADER, vertex_shader_string);
   fragment_shader = create_shader_helper(GL_FRAGMENT_SHADER, fragment_shader_string);
-  geometry_shader = create_shader_helper(GL_GEOMETRY_SHADER, geometry_shader_string);
 
-  if (!vertex_shader || !fragment_shader || !geometry_shader) 
+  if (!vertex_shader || !fragment_shader)
     return false;
 
   program_shader = glCreateProgram();
 
   glAttachShader(program_shader, vertex_shader);
   glAttachShader(program_shader, fragment_shader);
-  glAttachShader(program_shader, geometry_shader);
 
   glBindFragDataLocation(program_shader, 0, fragment_data_name.c_str());
   glLinkProgram(program_shader);
@@ -80,7 +76,8 @@ bool Program::init(
   {
     char buffer[512];
     glGetProgramInfoLog(program_shader, 512, NULL, buffer);
-    cerr << "Linker error: " << endl << buffer << endl;
+    cerr << "Linker error: " << endl
+         << buffer << endl;
     program_shader = 0;
     return false;
   }
@@ -106,7 +103,7 @@ GLint Program::uniform(const std::string &name) const
 }
 
 GLint Program::bindVertexAttribArray(
-        const std::string &name, VertexBufferObject& VBO, int num_attr, int stride, int offset) const
+    const std::string &name, VertexBufferObject &VBO) const
 {
   GLint id = attrib(name);
   if (id < 0)
@@ -118,11 +115,7 @@ GLint Program::bindVertexAttribArray(
   }
   VBO.bind();
   glEnableVertexAttribArray(id);
-  if(offset != 0)
-    glVertexAttribPointer(id, num_attr, GL_FLOAT, GL_FALSE, stride * sizeof(float), (void*) (offset*sizeof(float)));
-  else
-    glVertexAttribPointer(id, num_attr, GL_FLOAT, GL_FALSE, stride * sizeof(float), 0);
-
+  glVertexAttribPointer(id, VBO.rows, GL_FLOAT, GL_FALSE, 0, 0);
   check_gl_error();
 
   return id;
@@ -145,11 +138,6 @@ void Program::free()
     glDeleteShader(fragment_shader);
     fragment_shader = 0;
   }
-  if (geometry_shader)
-  {
-    glDeleteShader(geometry_shader);
-    geometry_shader = 0;
-  }
   check_gl_error();
 }
 
@@ -157,7 +145,7 @@ GLuint Program::create_shader_helper(GLint type, const std::string &shader_strin
 {
   using namespace std;
   if (shader_string.empty())
-    return (GLuint) 0;
+    return (GLuint)0;
 
   GLuint id = glCreateShader(type);
   const char *shader_string_const = shader_string.c_str();
@@ -176,10 +164,12 @@ GLuint Program::create_shader_helper(GLint type, const std::string &shader_strin
       cerr << "Fragment shader:" << endl;
     else if (type == GL_GEOMETRY_SHADER)
       cerr << "Geometry shader:" << endl;
-    cerr << shader_string << endl << endl;
+    cerr << shader_string << endl
+         << endl;
     glGetShaderInfoLog(id, 512, NULL, buffer);
-    cerr << "Error: " << endl << buffer << endl;
-    return (GLuint) 0;
+    cerr << "Error: " << endl
+         << buffer << endl;
+    return (GLuint)0;
   }
   check_gl_error();
 
@@ -188,24 +178,32 @@ GLuint Program::create_shader_helper(GLint type, const std::string &shader_strin
 
 void _check_gl_error(const char *file, int line)
 {
-  GLenum err (glGetError());
+  GLenum err(glGetError());
 
-  while(err!=GL_NO_ERROR)
+  while (err != GL_NO_ERROR)
   {
     std::string error;
 
-    switch(err)
+    switch (err)
     {
-      case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
-      case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
-      case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
-      case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
-      case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
+    case GL_INVALID_OPERATION:
+      error = "INVALID_OPERATION";
+      break;
+    case GL_INVALID_ENUM:
+      error = "INVALID_ENUM";
+      break;
+    case GL_INVALID_VALUE:
+      error = "INVALID_VALUE";
+      break;
+    case GL_OUT_OF_MEMORY:
+      error = "OUT_OF_MEMORY";
+      break;
+    case GL_INVALID_FRAMEBUFFER_OPERATION:
+      error = "INVALID_FRAMEBUFFER_OPERATION";
+      break;
     }
 
     std::cerr << "GL_" << error.c_str() << " - " << file << ":" << line << std::endl;
     err = glGetError();
   }
 }
-
-

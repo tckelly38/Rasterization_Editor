@@ -3,6 +3,7 @@
     "cmake.configureOnOpen": true,
     "C_Cpp.configurationWarnings": "Disabled",
     "files.associations": {
-        "ios": "cpp"
+        "ios": "cpp",
+        "functional": "cpp"
     }
 }

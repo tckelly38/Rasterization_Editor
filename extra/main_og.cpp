@@ -136,21 +136,20 @@ int main(void)
     // A program controls the OpenGL pipeline and it must contains
     // at least a vertex shader and a fragment shader to be valid
     Program program;
-    const GLchar* vertex_shader =
-            "#version 150 core\n"
-                    "in vec2 position;"
-                    "void main()"
-                    "{"
-                    "    gl_Position = vec4(position, 0.0, 1.0);"
-                    "}";
-    const GLchar* fragment_shader =
-            "#version 150 core\n"
-                    "out vec4 outColor;"
-                    "uniform vec3 triangleColor;"
-                    "void main()"
-                    "{"
-                    "    outColor = vec4(triangleColor, 1.0);"
-                    "}";
+    const GLchar *vertex_shader =
+        "#version 150 core\n"
+        "in vec2 position;"
+        "void main()"
+        "{"
+        "    gl_Position = vec4(position, 0.0, 1.0);"
+        "}";
+    const GLchar *fragment_shader =
+        "#version 150 core\n"
+        "out vec4 outColor;"
+        "void main()"
+        "{"
+        "    outColor = vec4(1.0, 0.0, 0.0 1.0);"
+        "}";
 
     // Compile the two shaders and upload the binary to the GPU
     // Note that we have to explicitly specify that the output "slot" called outColor
