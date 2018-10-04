@@ -23,7 +23,7 @@ bool insertion_mode_on = false;
 //std::vector<VertexBufferObject> VBO(2);
 bool is_drawn = false;
 bool tri_drawing_in_process = false;
-int current_tri_vertice = 0;
+//int current_tri_vertice = 0;
 uint current_tri_index = 0;
 // Contains the vertex positions
 using namespace std;
@@ -37,7 +37,7 @@ static void cursor_position_callback(GLFWwindow *window, double xpos, double ypo
         double xworld = ((xpos / double(width)) * 2) - 1;
         double yworld = (((height - 1 - ypos) / double(height)) * 2) - 1; // NOTE: y axis is flipped in glfw
 
-        V[current_tri_index].second.col(current_tri_vertice) << xworld, yworld;
+        V[current_tri_index].second.col(V[current_tri_index].second.cols() - 1) << xworld, yworld;
         V[current_tri_index].first.update(V[current_tri_index].second);
     }
 }
@@ -60,50 +60,19 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
     {
         is_drawn = true;
         tri_drawing_in_process = true;
+        V[current_tri_index].second.col(V[current_tri_index].second.cols() - 1) << xworld, yworld;
 
-        // first click
-        if (current_tri_vertice == 0)
-        { //must be first click
-            //V[current_tri_index].second.conservativeResize(Eigen::NoChange, 1);
-            V[current_tri_index].second.col(0) << xworld, yworld;
-            current_tri_vertice++;
-            V[current_tri_index].second.conservativeResize(Eigen::NoChange, 2);
-            V[current_tri_index].second.col(1) << xworld, yworld;
+        if (V[current_tri_index].second.cols() < 3){
+            V[current_tri_index].second.conservativeResize(Eigen::NoChange, V[current_tri_index].second.cols() + 1);
+            V[current_tri_index].second.col(V[current_tri_index].second.cols() - 1) << xworld, yworld;
         }
-        else if (current_tri_vertice == 1)
-        { // second click
-            V[current_tri_index].second.col(1) << xworld, yworld;
-            V[current_tri_index].second.conservativeResize(Eigen::NoChange, 3);
-            current_tri_vertice++;
-
-            V[current_tri_index].second.col(2) << xworld, yworld;
-        }
-        else if (current_tri_vertice == 2)
-        {
-            V[current_tri_index].second.col(2) << xworld, yworld;
+        else{
             tri_drawing_in_process = false;
             current_tri_index++;
-            current_tri_vertice = 0;
         }
-
-        // third click
-
-        // if (current_tri_vertice < 3){
-        //     V[current_tri_index].conservativeResize(Eigen::NoChange, current_tri_vertice + 1);
-        //     tri_drawing_in_process = true;
-        //     V[current_tri_index].col(current_tri_vertice) << xworld, yworld;
-        //     current_tri_vertice++;
-        // }
-        // else
-        // {
-        //     current_tri_vertice = -1;
-        //     tri_drawing_in_process = false;
-        //     current_tri_index++;
-        // }
     }
     // Upload the change to the GPU
     V[current_tri_index].first.update(V[current_tri_index].second);
-    //VBO[current_tri_index].update(V[current_tri_index]);
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -257,12 +226,13 @@ int main(void)
                 program.bindVertexAttribArray("position", itr->first);      
                 // Bind your program
                 program.bind();
-                // Draw a triangle
-                // TODO: make current_tri_vertice dependent on VBO
+                // Draw a triangle or line based on num vertices
                 if (itr->second.cols() == 2)
                     glDrawArrays(GL_LINES, 0, 2);
-                else if (itr->second.cols() == 3)
+                else if (itr->second.cols() == 3){
+                    glDrawArrays(GL_LINES, 0, 2);
                     glDrawArrays(GL_TRIANGLES, 0, 3);
+                }
             }
         }
 
