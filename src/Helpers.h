@@ -54,8 +54,9 @@ class VertexBufferObject
     GLuint rows;
     GLuint cols;
     bool done_drawing;
+    bool translating;
 
-    VertexBufferObject() : id(0), rows(0), cols(0), done_drawing(false) {}
+    VertexBufferObject() : id(0), rows(0), cols(0), done_drawing(false), translating(false) {}
 
     // Create a new empty VBO
     void init();
@@ -101,7 +102,7 @@ class Program
     GLint uniform(const std::string &name) const;
 
     // Bind a per-vertex array attribute
-    GLint bindVertexAttribArray(const std::string &name, VertexBufferObject &VBO) const;
+    GLint bindVertexAttribArray(const std::string &name, VertexBufferObject &VBO, int num_attr, int stride, int offset) const;
 
     GLuint create_shader_helper(GLint type, const std::string &shader_string);
 };

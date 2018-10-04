@@ -103,7 +103,7 @@ GLint Program::uniform(const std::string &name) const
 }
 
 GLint Program::bindVertexAttribArray(
-    const std::string &name, VertexBufferObject &VBO) const
+    const std::string &name, VertexBufferObject &VBO, int num_attr, int stride, int offset) const
 {
   GLint id = attrib(name);
   if (id < 0)
@@ -115,7 +115,7 @@ GLint Program::bindVertexAttribArray(
   }
   VBO.bind();
   glEnableVertexAttribArray(id);
-  glVertexAttribPointer(id, VBO.rows, GL_FLOAT, GL_FALSE, 0, 0);
+  glVertexAttribPointer(id, num_attr, GL_FLOAT, GL_FALSE, stride * sizeof(float), (void*) (offset * sizeof(float)));
   check_gl_error();
 
   return id;
