@@ -15,14 +15,19 @@
 #include <iostream>
 #include <vector>
 
+#define MAX_TRIANGLES 10
+
+bool insertion_mode_on = false;
+
 // VertexBufferObject wrapper
-VertexBufferObject VBO, VBO2;
+//std::vector<VertexBufferObject> VBO(2);
 bool is_drawn = false;
 bool tri_drawing_in_process = false;
 int current_tri_vertice = 0;
 uint current_tri_index = 0;
 // Contains the vertex positions
-std::vector<Eigen::MatrixXf> V(10, Eigen::MatrixXf::Zero(2, 3)); // no special std container care needed for non fixed size matrices
+using namespace std;
+vector<pair<VertexBufferObject, Eigen::MatrixXf>> V(MAX_TRIANGLES, make_pair(VertexBufferObject(), Eigen::MatrixXf::Zero(2, 1))); // no special std container care needed for non fixed size matrices
 static void cursor_position_callback(GLFWwindow *window, double xpos, double ypos)
 {
     if (tri_drawing_in_process)
@@ -32,8 +37,8 @@ static void cursor_position_callback(GLFWwindow *window, double xpos, double ypo
         double xworld = ((xpos / double(width)) * 2) - 1;
         double yworld = (((height - 1 - ypos) / double(height)) * 2) - 1; // NOTE: y axis is flipped in glfw
 
-        V[current_tri_index].col(current_tri_vertice) << xworld, yworld;
-        VBO.update(V[current_tri_index]);
+        V[current_tri_index].second.col(current_tri_vertice) << xworld, yworld;
+        V[current_tri_index].first.update(V[current_tri_index].second);
     }
 }
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
@@ -59,23 +64,23 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
         // first click
         if (current_tri_vertice == 0)
         { //must be first click
-            V[current_tri_index].conservativeResize(Eigen::NoChange, 1);
-            V[current_tri_index].col(0) << xworld, yworld;
+            //V[current_tri_index].second.conservativeResize(Eigen::NoChange, 1);
+            V[current_tri_index].second.col(0) << xworld, yworld;
             current_tri_vertice++;
-            V[current_tri_index].conservativeResize(Eigen::NoChange, 2);
-            V[current_tri_index].col(1) << xworld, yworld;
+            V[current_tri_index].second.conservativeResize(Eigen::NoChange, 2);
+            V[current_tri_index].second.col(1) << xworld, yworld;
         }
         else if (current_tri_vertice == 1)
         { // second click
-            V[current_tri_index].col(1) << xworld, yworld;
-            V[current_tri_index].conservativeResize(Eigen::NoChange, 3);
+            V[current_tri_index].second.col(1) << xworld, yworld;
+            V[current_tri_index].second.conservativeResize(Eigen::NoChange, 3);
             current_tri_vertice++;
 
-            V[current_tri_index].col(2) << xworld, yworld;
+            V[current_tri_index].second.col(2) << xworld, yworld;
         }
         else if (current_tri_vertice == 2)
         {
-            V[current_tri_index].col(2) << xworld, yworld;
+            V[current_tri_index].second.col(2) << xworld, yworld;
             tri_drawing_in_process = false;
             current_tri_index++;
             current_tri_vertice = 0;
@@ -97,26 +102,33 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
         // }
     }
     // Upload the change to the GPU
-    VBO.update(V[0]);
+    V[current_tri_index].first.update(V[current_tri_index].second);
+    //VBO[current_tri_index].update(V[current_tri_index]);
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     // Update the position of the first vertex if the keys 1,2, or 3 are pressed
-    // switch (key)
-    // {
-    // case GLFW_KEY_1:
-    //     V.col(0) << -0.5, 0.5;
-    //     break;
-    // case GLFW_KEY_2:
-    //     V.col(0) << 0, 0.5;
-    //     break;
-    // case GLFW_KEY_3:
-    //     V.col(0) << 0.5, 0.5;
-    //     break;
-    // default:
-    //     break;
-    // }
+    switch (key)
+    {
+    case GLFW_KEY_I:
+        if(action == GLFW_RELEASE){
+            if(insertion_mode_on)
+            {
+                glfwSetMouseButtonCallback(window, NULL);
+                glfwSetCursorPosCallback(window, NULL);
+                insertion_mode_on = false;
+            }
+            else{
+                glfwSetMouseButtonCallback(window, mouse_button_callback);
+                glfwSetCursorPosCallback(window, cursor_position_callback);
+                insertion_mode_on = true;
+            }
+        }
+        break;
+    default:
+        break;
+    }
 
     // // Upload the change to the GPU
     // VBO.update(V);
@@ -185,7 +197,8 @@ int main(void)
 
     // Initialize the VBO with the vertices data
     // A VBO is a data container that lives in the GPU memory
-    VBO.init();
+    for (auto itr = V.begin(); itr != V.end(); ++itr)
+        itr->first.init();
 
     // V.resize(5, 4);
     // V <<
@@ -231,34 +244,27 @@ int main(void)
     // Register the keyboard callback
     glfwSetKeyCallback(window, key_callback);
 
-    // Register the mouse callback
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-
-    // Register mouse cursor moving callback
-    glfwSetCursorPosCallback(window, cursor_position_callback);
+   
 
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
     {
-        if (is_drawn)
-            program.bindVertexAttribArray("position", VBO);
-        // Bind your VAO (not necessary if you have only one)
-        VAO.bind();
-
-        // Bind your program
-        program.bind();
-
         // Clear the framebuffer
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
-        // Draw a triangle
-        if (current_tri_vertice == 1)
-            glDrawArrays(GL_LINES, 0, 2);
-        else if (current_tri_vertice == 2)
-            glDrawArrays(GL_TRIANGLES, 0, 3);
-        if (current_tri_index > 0)
-            glDrawArrays(GL_TRIANGLES, 0, (current_tri_index + 1) * 3);
+        if (is_drawn){
+            for (auto itr = V.begin(); itr != V.end(); ++itr){
+                program.bindVertexAttribArray("position", itr->first);      
+                // Bind your program
+                program.bind();
+                // Draw a triangle
+                // TODO: make current_tri_vertice dependent on VBO
+                if (itr->second.cols() == 2)
+                    glDrawArrays(GL_LINES, 0, 2);
+                else if (itr->second.cols() == 3)
+                    glDrawArrays(GL_TRIANGLES, 0, 3);
+            }
+        }
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
@@ -270,7 +276,7 @@ int main(void)
     // Deallocate opengl memory
     program.free();
     VAO.free();
-    VBO.free();
+    V[0].first.free();
 
     // Deallocate glfw internals
     glfwTerminate();
