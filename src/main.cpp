@@ -68,6 +68,8 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
         }
         else{
             tri_drawing_in_process = false;
+            V[current_tri_index].first.done_drawing = true;
+
             current_tri_index++;
         }
     }
@@ -193,9 +195,10 @@ int main(void)
     const GLchar *fragment_shader =
         "#version 150 core\n"
         "out vec4 outColor;"
+        "uniform vec3 triangleColor;"
         "void main()"
         "{"
-        "    outColor = vec4(0.0, 0.0, 0.0, 1.0);"
+        "    outColor = vec4(triangleColor, 1.0);"
         "}";
 
     // Compile the two shaders and upload the binary to the GPU
@@ -219,6 +222,8 @@ int main(void)
     while (!glfwWindowShouldClose(window))
     {
         // Clear the framebuffer
+        glUniform3f(program.uniform("triangleColor"), 0.0f, 0.0f, 0.0f);
+
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         if (is_drawn){
@@ -227,11 +232,17 @@ int main(void)
                 // Bind your program
                 program.bind();
                 // Draw a triangle or line based on num vertices
+
                 if (itr->second.cols() == 2)
                     glDrawArrays(GL_LINES, 0, 2);
-                else if (itr->second.cols() == 3){
-                    glDrawArrays(GL_LINES, 0, 2);
+                else if (itr->second.cols() == 3 && !itr->first.done_drawing){
+                    glDrawArrays(GL_LINE_LOOP, 0, 3);
+                }
+                else if (itr->second.cols() == 3 && itr->first.done_drawing){
+                    glUniform3f(program.uniform("triangleColor"), 1.0f, 0.0f, 0.0f);
                     glDrawArrays(GL_TRIANGLES, 0, 3);
+                    glUniform3f(program.uniform("triangleColor"), 0.0f, 0.0f, 0.0f);
+                    glDrawArrays(GL_LINE_LOOP, 0, 3);
                 }
             }
         }

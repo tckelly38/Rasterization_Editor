@@ -53,8 +53,9 @@ class VertexBufferObject
     GLuint id;
     GLuint rows;
     GLuint cols;
+    bool done_drawing;
 
-    VertexBufferObject() : id(0), rows(0), cols(0) {}
+    VertexBufferObject() : id(0), rows(0), cols(0), done_drawing(false) {}
 
     // Create a new empty VBO
     void init();
