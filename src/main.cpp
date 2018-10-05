@@ -8,6 +8,7 @@
 
 // Linear Algebra Library
 #include <Eigen/Core>
+#include <Eigen/Dense>
 
 // Timer
 #include <chrono>
@@ -19,6 +20,7 @@
 
 bool insertion_mode_on = false;
 bool translation_mode_on = false;
+bool delete_mode_on = false;
 
 bool left_mouse_down = false;
 // VertexBufferObject wrapper
@@ -29,6 +31,9 @@ bool tri_drawing_in_process = false;
 //int current_tri_vertice = 0;
 uint current_tri_index = 0;
 int index_of_translating_triangle = -1;
+
+double prev_xworld;
+double prev_yworld;
 // Contains the vertex positions
 using namespace std;
 vector<pair<VertexBufferObject, Eigen::MatrixXf>> V(MAX_TRIANGLES, make_pair(VertexBufferObject(), Eigen::MatrixXf::Zero(5, 1))); // no special std container care needed for non fixed size matrices
@@ -59,6 +64,16 @@ void change_color(pair<VertexBufferObject, Eigen::MatrixXf>& T, float r, float g
 
     T.first.update(T.second);
 }
+bool get_orientation(double px, double py, double qx, double qy, double rx, double ry)
+{
+    double k = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+    if(k>=0) return true; //clockwise 
+    if(k<0) return false; //counter-clockwise
+}
+float sign(double p1x, double p1y, double p2x, double p2y, double p3x, double p3y)
+{
+    return (p1x - p3x) * (p2y - p3y) - (p2x - p3x) * (p1y - p3y);
+}
 bool barycentric(const Eigen::MatrixXf& T, double xworld, double yworld)
 {
     if(T.cols() != 3 || T.rows() != 5)
@@ -67,15 +82,35 @@ bool barycentric(const Eigen::MatrixXf& T, double xworld, double yworld)
            p0y = T(1, 0),
            p1x = T(0, 1),
            p1y = T(1, 1),
-           p2x = T(2, 0),
-           p2y = T(2, 2);
-    double area = 0.5 * (-p1y * p2x + p0y * (-p1x + p2x) + p0x * (p1y - p2y) + p1x * p2y),
-           s = 1 / (2 * area) * (p0y * p2x - p0x * p2y + (p2y - p0y) * xworld + (p0x - p2x) * yworld),
-           t = 1 / (2 * area) * (p0x * p1y - p0y * p1x + (p0y - p1y) * xworld + (p1x - p0x) * yworld);
-    if (s > 0 && t > 0 && 1 - s - t > 0)
-        return true;
+           p2x = T(0, 2),
+           p2y = T(1, 2);
+
+    Eigen::Matrix3d tri_tot, tri0, tri1, tri2;
+    tri_tot << p0x, p1x, p2x, 
+               p0y, p1y, p2y,
+               1, 1, 1;
+    tri0 << p0x, xworld, p1x, 
+            p0y, yworld, p1y,
+            1, 1, 1;
+    tri1 << p1x, xworld, p2x,
+            p1y, yworld, p2y,
+            1, 1, 1;
+    tri2 << p2x, xworld, p0x,
+            p2y, yworld, p0y,
+            1, 1, 1;
+
+    double area_tot = 0.5 * abs(tri_tot.determinant()),
+           area0 = 0.5 * abs(tri0.determinant()),
+           area1 = 0.5 * abs(tri1.determinant()),
+           area2 = 0.5 * abs(tri2.determinant());
+    double x = area0 + area1 + area2;
+    double y =  abs((area0 + area1 + area2) - area_tot);
+    
+    if (abs((area0 + area1 + area2) - area_tot) <= 0.00001) return true;
     return false;
 }
+
+
 
 static void cursor_position_callback_i(GLFWwindow *window, double xpos, double ypos)
 {
@@ -97,9 +132,32 @@ static void cursor_position_callback_o(GLFWwindow *window, double xpos, double y
         {
             if(itr->first.translating)
                 break;
-
         }
+        if (!itr->first.translating)
+            return;
         // translate with position of mouse itr.second
+        itr->second(0, 0) += xworld - prev_xworld;
+        itr->second(1, 0) += yworld - prev_yworld;
+        itr->second(0, 1) += xworld - prev_xworld;
+        itr->second(1, 1) += yworld - prev_yworld;
+        itr->second(0, 2) += xworld - prev_xworld;
+        itr->second(1, 2) += yworld - prev_yworld;
+        prev_xworld = xworld;
+        prev_yworld = yworld;
+    }
+}
+void mouse_button_callback_p(GLFWwindow *window, int button, int action, int mods) 
+{
+    double xworld, yworld;
+    get_world_coordinates(window, xworld, yworld);
+    for (auto itr = V.begin(); itr != V.end(); ++itr)
+    {
+        if (barycentric(itr->second, xworld, yworld))
+        {
+            //triangle has been hit
+            V.erase(itr);
+            break; //only one triangle can be clicked on
+        }
     }
 }
 void mouse_button_callback_o(GLFWwindow *window, int button, int action, int mods)
@@ -123,11 +181,16 @@ void mouse_button_callback_o(GLFWwindow *window, int button, int action, int mod
                 break; //only one triangle can be clicked on
             }
         }
+        prev_xworld = xworld;
+        prev_yworld = yworld;
     }
     else{
         for (auto itr = V.begin(); itr != V.end(); ++itr)
         {
-            itr->first.translating = false; //set all back to false
+            if (itr->first.translating){
+                itr->first.translating = false; 
+                break;
+            }
         }
     }
 }
@@ -153,7 +216,6 @@ void mouse_button_callback_i(GLFWwindow *window, int button, int action, int mod
             tri_drawing_in_process = false;
             V[current_tri_index].first.done_drawing = true;
             V[current_tri_index].first.update(V[current_tri_index].second);
-
             current_tri_index++;
         }
     }
@@ -193,6 +255,19 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
                 glfwSetCursorPosCallback(window, cursor_position_callback_o);
                 translation_mode_on = true;
             }
+            break;
+        case GLFW_KEY_P:
+            if (delete_mode_on)
+            {
+                glfwSetMouseButtonCallback(window, NULL);
+                delete_mode_on = false;
+            }
+            else
+            {
+                glfwSetMouseButtonCallback(window, mouse_button_callback_p);
+                delete_mode_on = true;
+            }
+            break;
         default:
             break;
         }
@@ -326,7 +401,6 @@ int main(void)
                 // Bind your program
                 program.bind();
                 // Draw a triangle or line based on num vertices
-
                 if (itr->second.cols() == 2)
                     glDrawArrays(GL_LINES, 0, 2);
                 else if (itr->second.cols() == 3 && !itr->first.done_drawing){
