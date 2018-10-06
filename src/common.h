@@ -7,6 +7,8 @@ extern std::vector<std::pair<VertexBufferObject, Eigen::MatrixXf>> V;//(MAX_TRIA
 extern bool insertion_mode_on;
 extern bool translation_mode_on;
 extern bool delete_mode_on;
+extern bool rotate_mode_on;
+extern bool rotate_clockwise;
 
 extern bool left_mouse_down;
 extern bool is_drawn;
@@ -32,21 +34,49 @@ void get_world_coordinates(GLFWwindow *window, double &xworld, double &yworld)
 }
 void change_color(std::pair<VertexBufferObject, Eigen::MatrixXf> &T, float r, float g, float b)
 {
-    T.second(2, 0) = r;
-    T.second(2, 1) = r;
-    T.second(2, 2) = r;
-    T.second(3, 0) = g;
-    T.second(3, 1) = g;
-    T.second(3, 2) = g;
-    T.second(4, 0) = b;
-    T.second(4, 1) = b;
-    T.second(4, 2) = b;
+    T.second(3, 0) = r;
+    T.second(3, 1) = r;
+    T.second(3, 2) = r;
+    T.second(4, 0) = g;
+    T.second(4, 1) = g;
+    T.second(4, 2) = g;
+    T.second(5, 0) = b;
+    T.second(5, 1) = b;
+    T.second(5, 2) = b;
 
     T.first.update(T.second);
 }
+void get_barycenter(std::pair<VertexBufferObject, Eigen::MatrixXf> &T)
+{
+    double p0x = T.second(0, 0),
+           p0y = T.second(1, 0),
+           p1x = T.second(0, 1),
+           p1y = T.second(1, 1),
+           p2x = T.second(0, 2),
+           p2y = T.second(1, 2);
+    T.first.barycentric_x = (p0x + p1x + p2x) / 3;
+    T.first.barycentric_y = (p0y + p1y + p2y) / 3;
+}
+void rotate_point(float cx, float cy, float angle, float &px, float &py)
+{
+    float s = sin(angle);
+    float c = cos(angle);
+
+    // translate point back to origin:
+    px -= cx;
+    py -= cy;
+
+    // rotate point
+    float xnew = px * c - py * s;
+    float ynew = px * s + py * c;
+
+    // translate point back:
+    px = xnew + cx;
+    py = ynew + cy;
+}
 bool is_intersection(const Eigen::MatrixXf &T, double xworld, double yworld)
 {
-    if (T.cols() != 3 || T.rows() != 5)
+    if (T.cols() != 3 || T.rows() != 6)
         return false;
     double p0x = T(0, 0),
            p0y = T(1, 0),

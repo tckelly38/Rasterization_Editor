@@ -55,8 +55,13 @@ class VertexBufferObject
     GLuint cols;
     bool done_drawing;
     bool translating;
+    bool rotate;
+    double barycentric_x;
+    double barycentric_y;
 
-    VertexBufferObject() : id(0), rows(0), cols(0), done_drawing(false), translating(false) {}
+
+    VertexBufferObject() : id(0), rows(0), cols(0), done_drawing(false), translating(false),
+                           rotate(false), barycentric_x(0.), barycentric_y(0.) {}
 
     // Create a new empty VBO
     void init();

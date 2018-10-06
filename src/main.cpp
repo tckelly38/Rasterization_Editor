@@ -8,16 +8,21 @@
 // Linear Algebra Library
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 // Timer
 #include <chrono>
 #include <iostream>
+
 
 #define MAX_TRIANGLES 10
 
 bool insertion_mode_on = false;
 bool translation_mode_on = false;
 bool delete_mode_on = false;
+bool rotate_mode_on = false;
+bool rotate_clockwise = false;
+bool rotate_counter_clockwise = false;
 
 bool left_mouse_down = false;
 bool is_drawn = false;
@@ -31,11 +36,11 @@ double prev_xworld;
 double prev_yworld;
 // Contains the vertex positions
 using namespace std;
-vector<pair<VertexBufferObject, Eigen::MatrixXf>> V(MAX_TRIANGLES, make_pair(VertexBufferObject(), Eigen::MatrixXf::Zero(5, 1))); // no special std container care needed for non fixed size matrices
+using namespace Eigen;
+vector<pair<VertexBufferObject, Eigen::MatrixXf>> V(MAX_TRIANGLES, make_pair(VertexBufferObject(), Eigen::MatrixXf::Zero(6, 1))); // no special std container care needed for non fixed size matrices
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-    // Update the position of the first vertex if the keys 1,2, or 3 are pressed
+{    
     if (action == GLFW_RELEASE)
     {
         switch (key)
@@ -79,13 +84,54 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
                 delete_mode_on = true;
             }
             break;
+        case GLFW_KEY_R:
+            if (rotate_mode_on)
+            {
+                glfwSetMouseButtonCallback(window, NULL);
+                rotate_mode_on = false;
+                for (auto itr = V.begin(); itr != V.end(); ++itr)
+                    itr->first.rotate = false;
+            }
+            else
+            {
+                glfwSetMouseButtonCallback(window, mouse_button_callback_r);
+                rotate_mode_on = true;
+            }
+            break;
+        case GLFW_KEY_H:
+            if (rotate_mode_on)
+            {
+                rotate_clockwise = false;
+            }
+            break;
+        case GLFW_KEY_J:
+                if (rotate_mode_on)
+                {
+                    rotate_counter_clockwise = false;
+                }
+                break;
         default:
             break;
         }
     }
-
-    // // Upload the change to the GPU
-    // VBO.update(V);
+    if (action == GLFW_PRESS)
+    {
+        switch (key)
+        {
+        case GLFW_KEY_H:
+            if (rotate_mode_on)
+            {
+                rotate_clockwise = true;
+            }
+            break;
+        case GLFW_KEY_J:
+            if (rotate_mode_on)
+            {
+                rotate_counter_clockwise = true;
+            }
+            break;
+        }
+    }
 }
 
 int main(void)
@@ -164,6 +210,7 @@ int main(void)
         "in vec2 position;"
         "in vec3 color;"
         "out vec3 fColor;"
+        "uniform mat4 trans;"
         "void main()"
         "{"
         "    gl_Position = vec4(position, 0.0, 1.0);"
@@ -201,14 +248,12 @@ int main(void)
     while (!glfwWindowShouldClose(window))
     {
         // Clear the framebuffer
-        //glUniform3f(program.uniform("triangleColor"), 0.0f, 0.0f, 0.0f);
-
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         if (is_drawn){
             for (auto itr = V.begin(); itr != V.end(); ++itr){
-                program.bindVertexAttribArray("position", itr->first, 2, 5, 0);
-                program.bindVertexAttribArray("color", itr->first, 3, 5, 2);
+                program.bindVertexAttribArray("position", itr->first, 3, 6, 0);
+                program.bindVertexAttribArray("color", itr->first, 3, 6, 3);
                 // Bind your program
                 program.bind();
                 // Draw a triangle or line based on num vertices
@@ -222,6 +267,21 @@ int main(void)
                         change_color(*itr, 0.0, 0.0, 1.0);
                     else
                         change_color(*itr, 1.0, 0.0, 0.0);
+
+                    if (itr->first.rotate && (rotate_clockwise || rotate_counter_clockwise))
+                    {
+                        double r;
+                        if (rotate_clockwise)
+                            r = -1 * M_PI / 180;
+                        else
+                            r = 1 * M_PI / 180;
+ 
+                        rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 0), itr->second(1, 0));
+                        rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 1), itr->second(1, 1));
+                        rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 2), itr->second(1, 2));
+
+                        itr->first.update(itr->second);
+                    }
 
                     glDrawArrays(GL_TRIANGLES, 0, 3);
 
@@ -242,7 +302,8 @@ int main(void)
     // Deallocate opengl memory
     program.free();
     VAO.free();
-    V[0].first.free();
+    for (auto itr = V.begin(); itr != V.end(); ++itr)
+        itr->first.free();
 
     // Deallocate glfw internals
     glfwTerminate();
