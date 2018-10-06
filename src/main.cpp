@@ -1,10 +1,9 @@
 // This example is heavily based on the tutorial at https://open.gl
 
 // OpenGL Helpers to reduce the clutter
-#include "Helpers.h"
-
-// GLFW is necessary to handle the OpenGL context
-#include <GLFW/glfw3.h>
+#include "common.h"
+#include "insertion.h"
+#include "translation.h"
 
 // Linear Algebra Library
 #include <Eigen/Core>
@@ -12,9 +11,7 @@
 
 // Timer
 #include <chrono>
-
 #include <iostream>
-#include <vector>
 
 #define MAX_TRIANGLES 10
 
@@ -23,8 +20,6 @@ bool translation_mode_on = false;
 bool delete_mode_on = false;
 
 bool left_mouse_down = false;
-// VertexBufferObject wrapper
-//std::vector<VertexBufferObject> VBO(2);
 bool is_drawn = false;
 bool tri_drawing_in_process = false;
 
@@ -37,190 +32,6 @@ double prev_yworld;
 // Contains the vertex positions
 using namespace std;
 vector<pair<VertexBufferObject, Eigen::MatrixXf>> V(MAX_TRIANGLES, make_pair(VertexBufferObject(), Eigen::MatrixXf::Zero(5, 1))); // no special std container care needed for non fixed size matrices
-void get_world_coordinates(GLFWwindow *window, double &xworld, double &yworld)
-{
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
-
-    // Get the size of the window
-    int width, height;
-    glfwGetWindowSize(window, &width, &height);
-
-    // Convert screen position to world coordinates
-    xworld = ((xpos / double(width)) * 2) - 1;
-    yworld = (((height - 1 - ypos) / double(height)) * 2) - 1; // NOTE: y axis is flipped in glfw
-}
-void change_color(pair<VertexBufferObject, Eigen::MatrixXf>& T, float r, float g, float b)
-{
-    T.second(2, 0) = r;
-    T.second(2, 1) = r;
-    T.second(2, 2) = r;
-    T.second(3, 0) = g;
-    T.second(3, 1) = g;
-    T.second(3, 2) = g;
-    T.second(4, 0) = b;
-    T.second(4, 1) = b;
-    T.second(4, 2) = b;
-
-    T.first.update(T.second);
-}
-bool get_orientation(double px, double py, double qx, double qy, double rx, double ry)
-{
-    double k = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
-    if(k>=0) return true; //clockwise 
-    if(k<0) return false; //counter-clockwise
-}
-float sign(double p1x, double p1y, double p2x, double p2y, double p3x, double p3y)
-{
-    return (p1x - p3x) * (p2y - p3y) - (p2x - p3x) * (p1y - p3y);
-}
-bool barycentric(const Eigen::MatrixXf& T, double xworld, double yworld)
-{
-    if(T.cols() != 3 || T.rows() != 5)
-        return false;
-    double p0x = T(0, 0),
-           p0y = T(1, 0),
-           p1x = T(0, 1),
-           p1y = T(1, 1),
-           p2x = T(0, 2),
-           p2y = T(1, 2);
-
-    Eigen::Matrix3d tri_tot, tri0, tri1, tri2;
-    tri_tot << p0x, p1x, p2x, 
-               p0y, p1y, p2y,
-               1, 1, 1;
-    tri0 << p0x, xworld, p1x, 
-            p0y, yworld, p1y,
-            1, 1, 1;
-    tri1 << p1x, xworld, p2x,
-            p1y, yworld, p2y,
-            1, 1, 1;
-    tri2 << p2x, xworld, p0x,
-            p2y, yworld, p0y,
-            1, 1, 1;
-
-    double area_tot = 0.5 * abs(tri_tot.determinant()),
-           area0 = 0.5 * abs(tri0.determinant()),
-           area1 = 0.5 * abs(tri1.determinant()),
-           area2 = 0.5 * abs(tri2.determinant());
-    double x = area0 + area1 + area2;
-    double y =  abs((area0 + area1 + area2) - area_tot);
-    
-    if (abs((area0 + area1 + area2) - area_tot) <= 0.00001) return true;
-    return false;
-}
-
-
-
-static void cursor_position_callback_i(GLFWwindow *window, double xpos, double ypos)
-{
-    if (tri_drawing_in_process)
-    {
-        double xworld, yworld;
-        get_world_coordinates(window, xworld, yworld);
-        V[current_tri_index].second.col(V[current_tri_index].second.cols() - 1) << xworld, yworld, 0.0, 0.0, 0.0;
-        V[current_tri_index].first.update(V[current_tri_index].second);
-    }
-}
-static void cursor_position_callback_o(GLFWwindow *window, double xpos, double ypos)
-{
-    double xworld, yworld;
-    get_world_coordinates(window, xworld, yworld);
-    auto itr = V.begin();
-    if(left_mouse_down){
-        for (; itr != V.end(); ++itr)
-        {
-            if(itr->first.translating)
-                break;
-        }
-        if (!itr->first.translating)
-            return;
-        // translate with position of mouse itr.second
-        itr->second(0, 0) += xworld - prev_xworld;
-        itr->second(1, 0) += yworld - prev_yworld;
-        itr->second(0, 1) += xworld - prev_xworld;
-        itr->second(1, 1) += yworld - prev_yworld;
-        itr->second(0, 2) += xworld - prev_xworld;
-        itr->second(1, 2) += yworld - prev_yworld;
-        prev_xworld = xworld;
-        prev_yworld = yworld;
-    }
-}
-void mouse_button_callback_p(GLFWwindow *window, int button, int action, int mods) 
-{
-    double xworld, yworld;
-    get_world_coordinates(window, xworld, yworld);
-    for (auto itr = V.begin(); itr != V.end(); ++itr)
-    {
-        if (barycentric(itr->second, xworld, yworld))
-        {
-            //triangle has been hit
-            V.erase(itr);
-            break; //only one triangle can be clicked on
-        }
-    }
-}
-void mouse_button_callback_o(GLFWwindow *window, int button, int action, int mods)
-{
-    double xworld, yworld;
-    get_world_coordinates(window, xworld, yworld);
-    if (button == GLFW_MOUSE_BUTTON_LEFT)
-    {
-        if(action == GLFW_PRESS)
-            left_mouse_down = true;
-        else if (action == GLFW_RELEASE)
-            left_mouse_down = false;
-    }
-    if(left_mouse_down){
-        for (auto itr = V.begin(); itr != V.end(); ++itr)
-        {
-            if (barycentric(itr->second, xworld, yworld))
-            {
-                //triangle has been hit
-                itr->first.translating = true;
-                break; //only one triangle can be clicked on
-            }
-        }
-        prev_xworld = xworld;
-        prev_yworld = yworld;
-    }
-    else{
-        for (auto itr = V.begin(); itr != V.end(); ++itr)
-        {
-            if (itr->first.translating){
-                itr->first.translating = false; 
-                break;
-            }
-        }
-    }
-}
-
-void mouse_button_callback_i(GLFWwindow *window, int button, int action, int mods)
-{
-    double xworld, yworld;
-    get_world_coordinates(window, xworld, yworld);
-
-    // Update the position of the first vertex if the left button is pressed
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    {
-        is_drawn = true;
-        tri_drawing_in_process = true;
-        V[current_tri_index].second.col(V[current_tri_index].second.cols() - 1) << xworld, yworld, 0.0, 0.0, 0.0;
-
-        if (V[current_tri_index].second.cols() < 3){
-            V[current_tri_index].second.conservativeResize(Eigen::NoChange, V[current_tri_index].second.cols() + 1);
-            V[current_tri_index].second.col(V[current_tri_index].second.cols() - 1) << xworld, yworld, 0.0, 0.0, 0.0;
-            V[current_tri_index].first.update(V[current_tri_index].second);
-        }
-        else{
-            tri_drawing_in_process = false;
-            V[current_tri_index].first.done_drawing = true;
-            V[current_tri_index].first.update(V[current_tri_index].second);
-            current_tri_index++;
-        }
-    }
-    // Upload the change to the GPU
-}
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
