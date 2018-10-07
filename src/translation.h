@@ -35,7 +35,9 @@ void mouse_button_callback_p(GLFWwindow *window, int button, int action, int mod
         if (is_intersection(itr->second, xworld, yworld))
         {
             //triangle has been hit
+            itr->first.free();
             V.erase(itr);
+
             break; //only one triangle can be clicked on
         }
     }

@@ -57,6 +57,10 @@ void get_barycenter(std::pair<VertexBufferObject, Eigen::MatrixXf> &T)
     T.first.barycentric_x = (p0x + p1x + p2x) / 3;
     T.first.barycentric_y = (p0y + p1y + p2y) / 3;
 }
+void scale_point(float cx, float cy, float scale, float &px, float &py){
+    px = cx + (px-cx) * scale;
+    py = cy + (py-cy) * scale;
+}
 void rotate_point(float cx, float cy, float angle, float &px, float &py)
 {
     float s = sin(angle);

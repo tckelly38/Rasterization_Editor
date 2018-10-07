@@ -23,6 +23,8 @@ bool delete_mode_on = false;
 bool rotate_mode_on = false;
 bool rotate_clockwise = false;
 bool rotate_counter_clockwise = false;
+bool scale_up = false;
+bool scale_down = false;
 
 bool left_mouse_down = false;
 bool is_drawn = false;
@@ -91,6 +93,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
                 rotate_mode_on = false;
                 for (auto itr = V.begin(); itr != V.end(); ++itr)
                     itr->first.rotate = false;
+                rotate_clockwise = rotate_counter_clockwise = scale_down = scale_up = false;
             }
             else
             {
@@ -110,6 +113,18 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
                     rotate_counter_clockwise = false;
                 }
                 break;
+        case GLFW_KEY_K:
+            if (rotate_mode_on)
+            {
+                scale_up = false;
+            }
+            break;
+        case GLFW_KEY_L:
+            if (rotate_mode_on)
+            {
+                scale_down = false;
+            }
+            break;
         default:
             break;
         }
@@ -128,6 +143,18 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             if (rotate_mode_on)
             {
                 rotate_counter_clockwise = true;
+            }
+            break;
+        case GLFW_KEY_K:
+            if (rotate_mode_on)
+            {
+                scale_up = true;
+            }
+            break;
+        case GLFW_KEY_L:
+            if (rotate_mode_on)
+            {
+                scale_down = true;
             }
             break;
         }
@@ -272,15 +299,27 @@ int main(void)
                     {
                         double r;
                         if (rotate_clockwise)
-                            r = -1 * M_PI / 180;
+                            r = -10 * M_PI / 180;
                         else
-                            r = 1 * M_PI / 180;
+                            r = 10 * M_PI / 180;
  
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 0), itr->second(1, 0));
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 1), itr->second(1, 1));
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 2), itr->second(1, 2));
 
                         itr->first.update(itr->second);
+                        rotate_clockwise = rotate_counter_clockwise = false;
+                    }
+                    else if(itr->first.rotate && (scale_up || scale_down)){
+                        double s;
+                        if(scale_up) s = 1.25;
+                        else s = 0.75;
+                        scale_point(itr->first.barycentric_x, itr->first.barycentric_y, s, itr->second(0, 0), itr->second(1, 0));
+                        scale_point(itr->first.barycentric_x, itr->first.barycentric_y, s, itr->second(0, 1), itr->second(1, 1));
+                        scale_point(itr->first.barycentric_x, itr->first.barycentric_y, s, itr->second(0, 2), itr->second(1, 2));
+
+                        itr->first.update(itr->second);
+                        scale_up = scale_down = false;
                     }
 
                     glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -288,6 +327,8 @@ int main(void)
                     // wire loop should always be black 
                     change_color(*itr, 0.0, 0.0, 0.0);
                     glDrawArrays(GL_LINE_LOOP, 0, 3);
+                    //rotate_clockwise  = rotate_counter_clockwise = false;
+
                 }
             }
         }
