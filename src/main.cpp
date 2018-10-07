@@ -4,6 +4,7 @@
 #include "common.h"
 #include "insertion.h"
 #include "translation.h"
+#include "color.h"
 
 // Linear Algebra Library
 #include <Eigen/Core>
@@ -13,7 +14,6 @@
 // Timer
 #include <chrono>
 #include <iostream>
-
 
 #define MAX_TRIANGLES 10
 
@@ -25,6 +25,17 @@ bool rotate_clockwise = false;
 bool rotate_counter_clockwise = false;
 bool scale_up = false;
 bool scale_down = false;
+bool color_mode = false;
+
+bool blue_mode = false;
+bool red_mode = false;
+bool green_mode = false;
+bool yellow_mode = false;
+bool orange_mode = false;
+bool black_mode = false;
+bool pink_mode = false;
+bool neon_green_mode = false;
+bool purple_mode = false;
 
 bool left_mouse_down = false;
 bool is_drawn = false;
@@ -42,7 +53,7 @@ using namespace Eigen;
 vector<pair<VertexBufferObject, Eigen::MatrixXf>> V(MAX_TRIANGLES, make_pair(VertexBufferObject(), Eigen::MatrixXf::Zero(6, 1))); // no special std container care needed for non fixed size matrices
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
-{    
+{
     if (action == GLFW_RELEASE)
     {
         switch (key)
@@ -54,7 +65,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
                 glfwSetCursorPosCallback(window, NULL);
                 insertion_mode_on = false;
             }
-            else{
+            else
+            {
                 glfwSetMouseButtonCallback(window, mouse_button_callback_i);
                 glfwSetCursorPosCallback(window, cursor_position_callback_i);
                 insertion_mode_on = true;
@@ -108,11 +120,11 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             }
             break;
         case GLFW_KEY_J:
-                if (rotate_mode_on)
-                {
-                    rotate_counter_clockwise = false;
-                }
-                break;
+            if (rotate_mode_on)
+            {
+                rotate_counter_clockwise = false;
+            }
+            break;
         case GLFW_KEY_K:
             if (rotate_mode_on)
             {
@@ -125,6 +137,31 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
                 scale_down = false;
             }
             break;
+        case GLFW_KEY_C:
+            if (color_mode)
+            {
+                glfwSetMouseButtonCallback(window, NULL);
+                for (auto itr = V.begin(); itr != V.end(); ++itr)
+                    itr->first.color_changing = false;
+                color_mode = false;
+                blue_mode = red_mode = green_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false;
+            }
+            else
+            {
+                glfwSetMouseButtonCallback(window, mouse_button_callback_c);
+                color_mode = true;
+            }
+            break;
+        case GLFW_KEY_1: red_mode = green_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) blue_mode = !blue_mode; break;
+        case GLFW_KEY_2: blue_mode = green_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) red_mode = !red_mode; break;
+        case GLFW_KEY_3: red_mode = blue_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) green_mode = !green_mode; break;
+        case GLFW_KEY_4: red_mode = green_mode = blue_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) yellow_mode = !yellow_mode; break;
+        case GLFW_KEY_5: red_mode = green_mode = yellow_mode = blue_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) orange_mode = !orange_mode; break;
+        case GLFW_KEY_6: red_mode = green_mode = yellow_mode = orange_mode = blue_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) black_mode = !black_mode; break;
+        case GLFW_KEY_7: red_mode = green_mode = yellow_mode = orange_mode = black_mode = blue_mode = neon_green_mode = purple_mode = false; if(color_mode) pink_mode = !pink_mode; break;
+        case GLFW_KEY_8: red_mode = green_mode = yellow_mode = orange_mode = black_mode = pink_mode = blue_mode = purple_mode = false; if(color_mode) neon_green_mode = !neon_green_mode; break;
+        case GLFW_KEY_9: red_mode = green_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = blue_mode = false; if(color_mode) purple_mode = !purple_mode; break;
+
         default:
             break;
         }
@@ -222,11 +259,10 @@ int main(void)
     VAO.init();
     VAO.bind();
 
-    // Initialize the VBO with the vertices data
+    // Initialize the VBOs
     // A VBO is a data container that lives in the GPU memory
     for (auto itr = V.begin(); itr != V.end(); ++itr)
         itr->first.init();
-
 
     // Initialize the OpenGL Program
     // A program controls the OpenGL pipeline and it must contains
@@ -260,16 +296,9 @@ int main(void)
     program.init(vertex_shader, fragment_shader, "outColor");
     program.bind();
 
-    // The vertex shader wants the position of the vertices as an input.
-    // The following line connects the VBO we defined above with the position "slot"
-    // in the vertex shader
-    // program.bindVertexAttribArray("position", VBO);
-    //program.bindVertexAttribArray("color", VBO, 3, VBO.rows, 2);
 
     // Register the keyboard callback
     glfwSetKeyCallback(window, key_callback);
-
-   
 
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
@@ -277,8 +306,10 @@ int main(void)
         // Clear the framebuffer
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-        if (is_drawn){
-            for (auto itr = V.begin(); itr != V.end(); ++itr){
+        if (is_drawn)
+        {
+            for (auto itr = V.begin(); itr != V.end(); ++itr)
+            {
                 program.bindVertexAttribArray("position", itr->first, 3, 6, 0);
                 program.bindVertexAttribArray("color", itr->first, 3, 6, 3);
                 // Bind your program
@@ -286,23 +317,35 @@ int main(void)
                 // Draw a triangle or line based on num vertices
                 if (itr->second.cols() == 2)
                     glDrawArrays(GL_LINES, 0, 2);
-                else if (itr->second.cols() == 3 && !itr->first.done_drawing){
+                else if (itr->second.cols() == 3 && !itr->first.done_drawing)
                     glDrawArrays(GL_LINE_LOOP, 0, 3);
-                }
-                else if (itr->second.cols() == 3 && itr->first.done_drawing){
-                    if(itr->first.translating)
+                else if (itr->second.cols() == 3 && itr->first.done_drawing)
+                {
+                    if (itr->first.translating)
+                    {
                         change_color(*itr, 0.0, 0.0, 1.0);
-                    else
-                        change_color(*itr, 1.0, 0.0, 0.0);
-
+                    }
+                    else{
+                        if(!itr->first.color_changed)
+                            change_color(*itr, 1.0, 0.0, 0.0);
+                        if(itr->first.color_changing){
+                            if (blue_mode) change_color_vertice(*itr, 0, 0, 1);
+                            else if(red_mode) change_color_vertice(*itr, 1, 0, 0); 
+                            else if (green_mode) change_color_vertice(*itr, 0, 1, 0); 
+                            else if (yellow_mode) change_color_vertice(*itr, 1, 1, 0); 
+                            else if (orange_mode) change_color_vertice(*itr, 1, 0.5, 0);
+                            else if (black_mode) change_color_vertice(*itr, 0, 0, 0);
+                            else if (pink_mode) change_color_vertice(*itr, 1, 0, 1);
+                            else if (neon_green_mode) change_color_vertice(*itr, 0.6, 1, 0.2);
+                            else if (purple_mode) change_color_vertice(*itr, 0.7, 0, 1);
+                        }
+                    }
                     if (itr->first.rotate && (rotate_clockwise || rotate_counter_clockwise))
                     {
                         double r;
-                        if (rotate_clockwise)
-                            r = -10 * M_PI / 180;
-                        else
-                            r = 10 * M_PI / 180;
- 
+                        if (rotate_clockwise) r = -10 * M_PI / 180;
+                        else r = 10 * M_PI / 180;
+
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 0), itr->second(1, 0));
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 1), itr->second(1, 1));
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 2), itr->second(1, 2));
@@ -310,9 +353,10 @@ int main(void)
                         itr->first.update(itr->second);
                         rotate_clockwise = rotate_counter_clockwise = false;
                     }
-                    else if(itr->first.rotate && (scale_up || scale_down)){
+                    else if (itr->first.rotate && (scale_up || scale_down))
+                    {
                         double s;
-                        if(scale_up) s = 1.25;
+                        if (scale_up) s = 1.25;
                         else s = 0.75;
                         scale_point(itr->first.barycentric_x, itr->first.barycentric_y, s, itr->second(0, 0), itr->second(1, 0));
                         scale_point(itr->first.barycentric_x, itr->first.barycentric_y, s, itr->second(0, 1), itr->second(1, 1));
@@ -324,10 +368,9 @@ int main(void)
 
                     glDrawArrays(GL_TRIANGLES, 0, 3);
 
-                    // wire loop should always be black 
-                    change_color(*itr, 0.0, 0.0, 0.0);
-                    glDrawArrays(GL_LINE_LOOP, 0, 3);
-                    //rotate_clockwise  = rotate_counter_clockwise = false;
+                    // wire loop should always be black
+                    //change_color(*itr, 0.0, 0.0, 0.0);
+                    //glDrawArrays(GL_LINE_LOOP, 0, 3);
 
                 }
             }

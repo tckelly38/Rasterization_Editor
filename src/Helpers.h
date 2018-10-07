@@ -56,12 +56,13 @@ class VertexBufferObject
     bool done_drawing;
     bool translating;
     bool rotate;
+    bool color_changed;
+    bool color_changing;
     double barycentric_x;
     double barycentric_y;
 
-
     VertexBufferObject() : id(0), rows(0), cols(0), done_drawing(false), translating(false),
-                           rotate(false), barycentric_x(0.), barycentric_y(0.) {}
+                           rotate(false), color_changed(false), color_changing(false), barycentric_x(0.), barycentric_y(0.) {}
 
     // Create a new empty VBO
     void init();

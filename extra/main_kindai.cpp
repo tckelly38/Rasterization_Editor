@@ -1,144 +1,164 @@
 // This example is heavily based on the tutorial at https://open.gl
 
 // OpenGL Helpers to reduce the clutter
-#include "Helpers.h"
-
-// GLFW is necessary to handle the OpenGL context
-#include <GLFW/glfw3.h>
+#include "common.h"
+#include "insertion.h"
+#include "translation.h"
 
 // Linear Algebra Library
 #include <Eigen/Core>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 // Timer
 #include <chrono>
-
 #include <iostream>
-#include <vector>
 
-// VertexBufferObject wrapper
-VertexBufferObject VBO;
+#define MAX_TRIANGLES 10
+
+bool insertion_mode_on = false;
+bool translation_mode_on = false;
+bool delete_mode_on = false;
+bool rotate_mode_on = false;
+bool rotate_clockwise = false;
+bool rotate_counter_clockwise = false;
+bool scale_up = false;
+bool scale_down = false;
+
+bool left_mouse_down = false;
 bool is_drawn = false;
 bool tri_drawing_in_process = false;
-int current_tri_vertice = 0;
+
+//int current_tri_vertice = 0;
 uint current_tri_index = 0;
+int index_of_translating_triangle = -1;
+
+double prev_xworld;
+double prev_yworld;
 // Contains the vertex positions
-std::vector<Eigen::MatrixXf> V(10, Eigen::MatrixXf::Zero(2, 3)); // no special std container care needed for non fixed size matrices
-static void cursor_position_callback(GLFWwindow *window, double xpos, double ypos)
-{
-    if (tri_drawing_in_process)
-    {
-        int width, height;
-        glfwGetWindowSize(window, &width, &height);
-        double xworld = ((xpos / double(width)) * 2) - 1;
-        double yworld = (((height - 1 - ypos) / double(height)) * 2) - 1; // NOTE: y axis is flipped in glfw
-
-        // V[current_tri_index].col(current_tri_vertice) << xworld, yworld;
-        // VBO.update(V[current_tri_index]);
-        // after first click
-        if (current_tri_vertice == 1)
-        {
-            // if(V[current_tri_index].cols() == 1)
-            //     V[current_tri_index].conservativeResize(Eigen::NoChange, 2);
-
-            V[current_tri_index].col(1) << xworld, yworld;
-            VBO.update(V[current_tri_index]);
-        }
-
-        // after second click
-        if (current_tri_vertice == 2)
-        {
-            // if (V[current_tri_index].cols() == 2)
-            //     V[current_tri_index].conservativeResize(Eigen::NoChange, 3);
-
-            V[current_tri_index].col(2) << xworld, yworld;
-            VBO.update(V[current_tri_index]);
-        }
-    }
-}
-void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
-{
-    // Get the position of the mouse in the window
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
-
-    // Get the size of the window
-    int width, height;
-    glfwGetWindowSize(window, &width, &height);
-
-    // Convert screen position to world coordinates
-    double xworld = ((xpos / double(width)) * 2) - 1;
-    double yworld = (((height - 1 - ypos) / double(height)) * 2) - 1; // NOTE: y axis is flipped in glfw
-
-    // Update the position of the first vertex if the left button is pressed
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    {
-        is_drawn = true;
-        tri_drawing_in_process = true;
-
-        // first click
-        if (current_tri_vertice == 0)
-        { //must be first click
-            V[current_tri_index].conservativeResize(Eigen::NoChange, 1);
-            V[current_tri_index].col(0) << xworld, yworld;
-            current_tri_vertice++;
-            V[current_tri_index].conservativeResize(Eigen::NoChange, 2);
-            V[current_tri_index].col(1) << xworld, yworld;
-        }
-        else if (current_tri_vertice == 1)
-        { // second click
-            V[current_tri_index].col(1) << xworld, yworld;
-            V[current_tri_index].conservativeResize(Eigen::NoChange, 3);
-            current_tri_vertice++;
-
-            V[current_tri_index].col(2) << xworld, yworld;
-        }
-        else if (current_tri_vertice == 2)
-        {
-            V[current_tri_index].col(2) << xworld, yworld;
-            tri_drawing_in_process = false;
-            current_tri_index++;
-            current_tri_vertice = 0;
-        }
-
-        // third click
-
-        // if (current_tri_vertice < 3){
-        //     V[current_tri_index].conservativeResize(Eigen::NoChange, current_tri_vertice + 1);
-        //     tri_drawing_in_process = true;
-        //     V[current_tri_index].col(current_tri_vertice) << xworld, yworld;
-        //     current_tri_vertice++;
-        // }
-        // else
-        // {
-        //     current_tri_vertice = -1;
-        //     tri_drawing_in_process = false;
-        //     current_tri_index++;
-        // }
-    }
-    // Upload the change to the GPU
-    VBO.update(V[current_tri_index]);
-}
+using namespace std;
+using namespace Eigen;
+vector<pair<VertexBufferObject, Eigen::MatrixXf>> V(MAX_TRIANGLES, make_pair(VertexBufferObject(), Eigen::MatrixXf::Zero(6, 1))); // no special std container care needed for non fixed size matrices
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-    // Update the position of the first vertex if the keys 1,2, or 3 are pressed
-    // switch (key)
-    // {
-    // case GLFW_KEY_1:
-    //     V.col(0) << -0.5, 0.5;
-    //     break;
-    // case GLFW_KEY_2:
-    //     V.col(0) << 0, 0.5;
-    //     break;
-    // case GLFW_KEY_3:
-    //     V.col(0) << 0.5, 0.5;
-    //     break;
-    // default:
-    //     break;
-    // }
-
-    // // Upload the change to the GPU
-    // VBO.update(V);
+    if (action == GLFW_RELEASE)
+    {
+        switch (key)
+        {
+        case GLFW_KEY_I:
+            if (insertion_mode_on)
+            {
+                glfwSetMouseButtonCallback(window, NULL);
+                glfwSetCursorPosCallback(window, NULL);
+                insertion_mode_on = false;
+            }
+            else
+            {
+                glfwSetMouseButtonCallback(window, mouse_button_callback_i);
+                glfwSetCursorPosCallback(window, cursor_position_callback_i);
+                insertion_mode_on = true;
+            }
+            break;
+        case GLFW_KEY_O:
+            if (translation_mode_on)
+            {
+                glfwSetMouseButtonCallback(window, NULL);
+                glfwSetCursorPosCallback(window, NULL);
+                translation_mode_on = false;
+            }
+            else
+            {
+                glfwSetMouseButtonCallback(window, mouse_button_callback_o);
+                glfwSetCursorPosCallback(window, cursor_position_callback_o);
+                translation_mode_on = true;
+            }
+            break;
+        case GLFW_KEY_P:
+            if (delete_mode_on)
+            {
+                glfwSetMouseButtonCallback(window, NULL);
+                delete_mode_on = false;
+            }
+            else
+            {
+                glfwSetMouseButtonCallback(window, mouse_button_callback_p);
+                delete_mode_on = true;
+            }
+            break;
+        case GLFW_KEY_R:
+            if (rotate_mode_on)
+            {
+                glfwSetMouseButtonCallback(window, NULL);
+                rotate_mode_on = false;
+                for (auto itr = V.begin(); itr != V.end(); ++itr)
+                    itr->first.rotate = false;
+                rotate_clockwise = rotate_counter_clockwise = scale_down = scale_up = false;
+            }
+            else
+            {
+                glfwSetMouseButtonCallback(window, mouse_button_callback_r);
+                rotate_mode_on = true;
+            }
+            break;
+        case GLFW_KEY_H:
+            if (rotate_mode_on)
+            {
+                rotate_clockwise = false;
+            }
+            break;
+        case GLFW_KEY_J:
+            if (rotate_mode_on)
+            {
+                rotate_counter_clockwise = false;
+            }
+            break;
+        case GLFW_KEY_K:
+            if (rotate_mode_on)
+            {
+                scale_up = false;
+            }
+            break;
+        case GLFW_KEY_L:
+            if (rotate_mode_on)
+            {
+                scale_down = false;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    if (action == GLFW_PRESS)
+    {
+        switch (key)
+        {
+        case GLFW_KEY_H:
+            if (rotate_mode_on)
+            {
+                rotate_clockwise = true;
+            }
+            break;
+        case GLFW_KEY_J:
+            if (rotate_mode_on)
+            {
+                rotate_counter_clockwise = true;
+            }
+            break;
+        case GLFW_KEY_K:
+            if (rotate_mode_on)
+            {
+                scale_up = true;
+            }
+            break;
+        case GLFW_KEY_L:
+            if (rotate_mode_on)
+            {
+                scale_down = true;
+            }
+            break;
+        }
+    }
 }
 
 int main(void)
@@ -204,16 +224,8 @@ int main(void)
 
     // Initialize the VBO with the vertices data
     // A VBO is a data container that lives in the GPU memory
-    VBO.init();
-
-    // V.resize(5, 4);
-    // V <<
-    //     -0.4, 0.4, -0.4, 0.4,             // x coordinates
-    //     0.4, 0.4, -0.4, -0.4,              // y ccordinates
-    //     0.0, 1.0, 0.0, 1.0,               // colors
-    //     0.0, 0., 1.0, 1.0,
-    //     1.0, 0., 0.0, 0.0;
-    //VBO.update(V[0]);
+    for (auto itr = V.begin(); itr != V.end(); ++itr)
+        itr->first.init();
 
     // Initialize the OpenGL Program
     // A program controls the OpenGL pipeline and it must contains
@@ -222,17 +234,23 @@ int main(void)
     const GLchar *vertex_shader =
         "#version 150 core\n"
         "in vec2 position;"
+        "in vec3 color;"
+        "out vec3 fColor;"
+        "uniform mat4 trans;"
         "void main()"
         "{"
         "    gl_Position = vec4(position, 0.0, 1.0);"
+        "    fColor = color;"
         "}";
 
     const GLchar *fragment_shader =
         "#version 150 core\n"
+        "in vec3 fColor;"
         "out vec4 outColor;"
+        "uniform vec3 triangleColor;"
         "void main()"
         "{"
-        "    outColor = vec4(0.0, 0.0, 0.0, 1.0);"
+        "    outColor = vec4(fColor, 1.0);"
         "}";
 
     // Compile the two shaders and upload the binary to the GPU
@@ -250,34 +268,73 @@ int main(void)
     // Register the keyboard callback
     glfwSetKeyCallback(window, key_callback);
 
-    // Register the mouse callback
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-
-    // Register mouse cursor moving callback
-    glfwSetCursorPosCallback(window, cursor_position_callback);
-
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
     {
-        if (is_drawn)
-            program.bindVertexAttribArray("position", VBO);
-        // Bind your VAO (not necessary if you have only one)
-        VAO.bind();
-
-        // Bind your program
-        program.bind();
-
         // Clear the framebuffer
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+        if (is_drawn)
+        {
+            for (auto itr = V.begin(); itr != V.end(); ++itr)
+            {
+                program.bindVertexAttribArray("position", itr->first, 3, 6, 0);
+                program.bindVertexAttribArray("color", itr->first, 3, 6, 3);
+                // Bind your program
+                program.bind();
+                // Draw a triangle or line based on num vertices
+                if (itr->second.cols() == 2)
+                    glDrawArrays(GL_LINES, 0, 2);
+                else if (itr->second.cols() == 3 && !itr->first.done_drawing)
+                {
+                    glDrawArrays(GL_LINE_LOOP, 0, 3);
+                }
+                else if (itr->second.cols() == 3 && itr->first.done_drawing)
+                {
+                    if (itr->first.translating)
+                        change_color(*itr, 0.0, 0.0, 1.0);
+                    else
+                        change_color(*itr, 1.0, 0.0, 0.0);
 
-        // Draw a triangle
-        if (current_tri_vertice == 1)
-            glDrawArrays(GL_LINES, 0, 2);
-        else if (current_tri_vertice == 2)
-            glDrawArrays(GL_TRIANGLES, 0, 3);
-        if (current_tri_index > 0)
-            glDrawArrays(GL_TRIANGLES, 0, (current_tri_index + 1) * 3);
+                    if (itr->first.rotate && (rotate_clockwise || rotate_counter_clockwise))
+                    {
+                        double r;
+                        if (rotate_clockwise)
+                            r = -10 * M_PI / 180;
+                        else
+                            r = 10 * M_PI / 180;
+
+                        rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 0), itr->second(1, 0));
+                        rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 1), itr->second(1, 1));
+                        rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 2), itr->second(1, 2));
+
+                        itr->first.update(itr->second);
+                        rotate_clockwise = rotate_counter_clockwise = false;
+                    }
+                    else if (itr->first.rotate && (scale_up || scale_down))
+                    {
+                        double s;
+                        if (scale_up)
+                            s = 1.25;
+                        else
+                            s = 0.75;
+                        scale_point(itr->first.barycentric_x, itr->first.barycentric_y, s, itr->second(0, 0), itr->second(1, 0));
+                        scale_point(itr->first.barycentric_x, itr->first.barycentric_y, s, itr->second(0, 1), itr->second(1, 1));
+                        scale_point(itr->first.barycentric_x, itr->first.barycentric_y, s, itr->second(0, 2), itr->second(1, 2));
+
+                        itr->first.update(itr->second);
+                        scale_up = scale_down = false;
+                    }
+
+                    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+                    // wire loop should always be black
+                    change_color(*itr, 0.0, 0.0, 0.0);
+                    glDrawArrays(GL_LINE_LOOP, 0, 3);
+                    //rotate_clockwise  = rotate_counter_clockwise = false;
+                }
+            }
+        }
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
@@ -289,7 +346,8 @@ int main(void)
     // Deallocate opengl memory
     program.free();
     VAO.free();
-    VBO.free();
+    for (auto itr = V.begin(); itr != V.end(); ++itr)
+        itr->first.free();
 
     // Deallocate glfw internals
     glfwTerminate();
