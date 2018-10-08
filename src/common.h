@@ -19,10 +19,17 @@ extern int index_of_translating_triangle;
 
 extern double prev_xworld;
 extern double prev_yworld;
+extern float lateral_adj;
+extern float longitudinal_adj;
+extern float scale;
 void get_world_coordinates(GLFWwindow *window, double &xworld, double &yworld)
 {
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
+    // xpos -= lateral_adj;
+    // ypos -= longitudinal_adj;
+    // xpos /= scale;
+    // ypos /= scale;
 
     // Get the size of the window
     int width, height;
@@ -31,6 +38,10 @@ void get_world_coordinates(GLFWwindow *window, double &xworld, double &yworld)
     // Convert screen position to world coordinates
     xworld = ((xpos / double(width)) * 2) - 1;
     yworld = (((height - 1 - ypos) / double(height)) * 2) - 1; // NOTE: y axis is flipped in glfw
+    xworld -= lateral_adj;
+    yworld -= longitudinal_adj;
+    xworld /= scale;
+    yworld /= scale;
 }
 void change_color(std::pair<VertexBufferObject, Eigen::MatrixXf> &T, float r, float g, float b)
 {

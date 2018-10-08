@@ -27,6 +27,10 @@ bool scale_up = false;
 bool scale_down = false;
 bool color_mode = false;
 
+float lateral_adj = 0.0;
+float longitudinal_adj = 0.0;
+float scale = 1.0;
+
 bool blue_mode = false;
 bool red_mode = false;
 bool green_mode = false;
@@ -45,8 +49,8 @@ bool tri_drawing_in_process = false;
 uint current_tri_index = 0;
 int index_of_translating_triangle = -1;
 
-double prev_xworld;
-double prev_yworld;
+double prev_xworld = 0;
+double prev_yworld = 0;
 // Contains the vertex positions
 using namespace std;
 using namespace Eigen;
@@ -152,6 +156,25 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
                 color_mode = true;
             }
             break;
+        case GLFW_KEY_A:
+            lateral_adj -= 0.2;
+            break;
+        case GLFW_KEY_D:
+            lateral_adj += 0.2;
+            break;
+        case GLFW_KEY_W:
+            longitudinal_adj += 0.2;
+            break;
+        case GLFW_KEY_S:
+            longitudinal_adj -= 0.2;
+            break;
+        case GLFW_KEY_EQUAL:
+            scale += 0.2;
+            break;
+        case GLFW_KEY_MINUS:
+            scale -= 0.2;
+            break;
+
         case GLFW_KEY_1: red_mode = green_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) blue_mode = !blue_mode; break;
         case GLFW_KEY_2: blue_mode = green_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) red_mode = !red_mode; break;
         case GLFW_KEY_3: red_mode = blue_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) green_mode = !green_mode; break;
@@ -273,10 +296,10 @@ int main(void)
         "in vec2 position;"
         "in vec3 color;"
         "out vec3 fColor;"
-        "uniform mat4 trans;"
+        "uniform mat4 view;"
         "void main()"
         "{"
-        "    gl_Position = vec4(position, 0.0, 1.0);"
+        "    gl_Position = view * vec4(position, 0.0, 1.0);"
         "    fColor = color;"
         "}";
 
@@ -312,6 +335,11 @@ int main(void)
             {
                 program.bindVertexAttribArray("position", itr->first, 3, 6, 0);
                 program.bindVertexAttribArray("color", itr->first, 3, 6, 3);
+                Eigen::Matrix4f view = Eigen::Matrix4f::Identity();
+                view(0, 3) = lateral_adj;
+                view(1, 3) = longitudinal_adj;
+                view(0, 0) = view(1, 1) = scale;
+                glUniformMatrix4fv(program.uniform("view"), 1, GL_FALSE, view.data());
                 // Bind your program
                 program.bind();
                 // Draw a triangle or line based on num vertices
@@ -365,12 +393,11 @@ int main(void)
                         itr->first.update(itr->second);
                         scale_up = scale_down = false;
                     }
-
                     glDrawArrays(GL_TRIANGLES, 0, 3);
 
                     // wire loop should always be black
-                    //change_color(*itr, 0.0, 0.0, 0.0);
-                    //glDrawArrays(GL_LINE_LOOP, 0, 3);
+                    change_color(*itr, 0.0, 0.0, 0.0);
+                    glDrawArrays(GL_LINE_LOOP, 0, 3);
 
                 }
             }
