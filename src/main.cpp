@@ -26,6 +26,7 @@ bool rotate_counter_clockwise = false;
 bool scale_up = false;
 bool scale_down = false;
 bool color_mode = false;
+bool animate_mode = false;
 
 float lateral_adj = 0.0;
 float longitudinal_adj = 0.0;
@@ -157,22 +158,26 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             }
             break;
         case GLFW_KEY_A:
-            lateral_adj -= 0.2;
-            break;
-        case GLFW_KEY_D:
             lateral_adj += 0.2;
             break;
-        case GLFW_KEY_W:
-            longitudinal_adj += 0.2;
+        case GLFW_KEY_D:
+            lateral_adj -= 0.2;
             break;
-        case GLFW_KEY_S:
+        case GLFW_KEY_W:
             longitudinal_adj -= 0.2;
             break;
+        case GLFW_KEY_S:
+            longitudinal_adj += 0.2;
+            break;
         case GLFW_KEY_EQUAL:
-            scale += 0.2;
+            if (mods == GLFW_MOD_SHIFT)
+                scale += 0.2;
             break;
         case GLFW_KEY_MINUS:
             scale -= 0.2;
+            break;
+        case GLFW_KEY_N:
+            animate_mode = !animate_mode;
             break;
 
         case GLFW_KEY_1: red_mode = green_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) blue_mode = !blue_mode; break;
@@ -340,6 +345,9 @@ int main(void)
                 view(1, 3) = longitudinal_adj;
                 view(0, 0) = view(1, 1) = scale;
                 glUniformMatrix4fv(program.uniform("view"), 1, GL_FALSE, view.data());
+
+                // Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
+                // glUniformMatrix4fv(program.uniform("trans"), 1, GL_FALSE, trans.data());
                 // Bind your program
                 program.bind();
                 // Draw a triangle or line based on num vertices
@@ -372,7 +380,7 @@ int main(void)
                     {
                         double r;
                         if (rotate_clockwise) r = -10 * M_PI / 180;
-                        else r = 10 * M_PI / 180;
+                        else r = 10 * M_PI / 180;                        
 
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 0), itr->second(1, 0));
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, r, itr->second(0, 1), itr->second(1, 1));
@@ -393,11 +401,20 @@ int main(void)
                         itr->first.update(itr->second);
                         scale_up = scale_down = false;
                     }
+                    if(animate_mode){
+                        rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, 0.25 * M_PI / 180, itr->second(0, 0), itr->second(1, 0));
+                        rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, 0.25 * M_PI / 180, itr->second(0, 1), itr->second(1, 1));
+                        rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, 0.25 * M_PI / 180, itr->second(0, 2), itr->second(1, 2));
+
+                        itr->first.update(itr->second);
+                    }
                     glDrawArrays(GL_TRIANGLES, 0, 3);
 
                     // wire loop should always be black
-                    change_color(*itr, 0.0, 0.0, 0.0);
-                    glDrawArrays(GL_LINE_LOOP, 0, 3);
+                    if(!itr->first.color_changed){
+                        change_color(*itr, 0.0, 0.0, 0.0);
+                        glDrawArrays(GL_LINE_LOOP, 0, 3);
+                    }
 
                 }
             }
