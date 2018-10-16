@@ -58,11 +58,19 @@ class VertexBufferObject
     bool rotate;
     bool color_changed;
     bool color_changing;
+    bool animate;
     double barycentric_x;
     double barycentric_y;
+    Eigen::Matrix3f saved_color;
+
 
     VertexBufferObject() : id(0), rows(0), cols(0), done_drawing(false), translating(false),
-                           rotate(false), color_changed(false), color_changing(false), barycentric_x(0.), barycentric_y(0.) {}
+                           rotate(false), color_changed(false), color_changing(false), barycentric_x(0.), barycentric_y(0.),
+                           animate(false) {
+                             saved_color << 1.0, 1.0, 1.0,
+                                            0., 0., 0.,
+                                            0., 0., 0.;
+                           }
 
     // Create a new empty VBO
     void init();

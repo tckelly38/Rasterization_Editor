@@ -21,6 +21,20 @@ static void closest_vertice(Eigen::MatrixXf &T, float xworld, float yworld)
     else T(2, 2) = -1;
 
 }
+void change_color(std::pair<VertexBufferObject, Eigen::MatrixXf> &T, float r, float g, float b)
+{
+    T.second(3, 0) = r;
+    T.second(3, 1) = r;
+    T.second(3, 2) = r;
+    T.second(4, 0) = g;
+    T.second(4, 1) = g;
+    T.second(4, 2) = g;
+    T.second(5, 0) = b;
+    T.second(5, 1) = b;
+    T.second(5, 2) = b;
+
+    T.first.update(T.second);
+}
 static void mouse_button_callback_c(GLFWwindow *window, int button, int action, int mods)
 {
     double xworld, yworld;
@@ -38,6 +52,13 @@ static void mouse_button_callback_c(GLFWwindow *window, int button, int action, 
             }
         }
     }
+}
+static void save_color(std::pair<VertexBufferObject, Eigen::MatrixXf> &T){
+    T.first.saved_color = T.second.block(3, 0, 3, 3);
+}
+static void restore_color(std::pair<VertexBufferObject, Eigen::MatrixXf> &T){
+    T.second.block(3, 0, 3, 3) = T.first.saved_color;
+    T.first.update(T.second);
 }
 static void change_color_vertice(std::pair<VertexBufferObject, Eigen::MatrixXf> &T, float r, float g, float b)
 {

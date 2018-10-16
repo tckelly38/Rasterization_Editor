@@ -60,6 +60,24 @@ void mouse_button_callback_r(GLFWwindow *window, int button, int action, int mod
         }
     }
 }
+void mouse_button_callback_n(GLFWwindow *window, int button, int action, int mods)
+{
+    double xworld, yworld;
+    get_world_coordinates(window, xworld, yworld);
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+    {
+        for (auto itr = V.begin(); itr != V.end(); ++itr)
+        {
+            if (is_intersection(itr->second, xworld, yworld))
+            {
+                //triangle has been hit
+                itr->first.animate = !itr->first.animate;
+                get_barycenter(*itr);
+                break; //only one triangle can be clicked on
+            }
+        }
+    }
+}
 void mouse_button_callback_o(GLFWwindow *window, int button, int action, int mods)
 {
     double xworld, yworld;

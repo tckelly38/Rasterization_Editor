@@ -15,7 +15,7 @@
 #include <chrono>
 #include <iostream>
 
-#define MAX_TRIANGLES 10
+#define MAX_TRIANGLES 25
 
 bool insertion_mode_on = false;
 bool translation_mode_on = false;
@@ -177,7 +177,18 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             scale -= 0.2;
             break;
         case GLFW_KEY_N:
-            animate_mode = !animate_mode;
+            if (animate_mode)
+            {
+                glfwSetMouseButtonCallback(window, NULL);
+                animate_mode = false;
+                for (auto itr = V.begin(); itr != V.end(); ++itr)
+                    itr->first.animate = false;
+            }
+            else
+            {
+                glfwSetMouseButtonCallback(window, mouse_button_callback_n);
+                animate_mode = true;
+            }
             break;
 
         case GLFW_KEY_1: red_mode = green_mode = yellow_mode = orange_mode = black_mode = pink_mode = neon_green_mode = purple_mode = false; if(color_mode) blue_mode = !blue_mode; break;
@@ -359,11 +370,13 @@ int main(void)
                 {
                     if (itr->first.translating)
                     {
+                        //save_color(*itr);
                         change_color(*itr, 0.0, 0.0, 1.0);
                     }
                     else{
-                        if(!itr->first.color_changed)
-                            change_color(*itr, 1.0, 0.0, 0.0);
+                        restore_color(*itr);
+                        // if(!itr->first.color_changed)
+                        //     change_color(*itr, 1.0, 0.0, 0.0);
                         if(itr->first.color_changing){
                             if (blue_mode) change_color_vertice(*itr, 0, 0, 1);
                             else if(red_mode) change_color_vertice(*itr, 1, 0, 0); 
@@ -375,6 +388,7 @@ int main(void)
                             else if (neon_green_mode) change_color_vertice(*itr, 0.6, 1, 0.2);
                             else if (purple_mode) change_color_vertice(*itr, 0.7, 0, 1);
                         }
+                        save_color(*itr);
                     }
                     if (itr->first.rotate && (rotate_clockwise || rotate_counter_clockwise))
                     {
@@ -401,7 +415,7 @@ int main(void)
                         itr->first.update(itr->second);
                         scale_up = scale_down = false;
                     }
-                    if(animate_mode){
+                    if(itr->first.animate){
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, 0.25 * M_PI / 180, itr->second(0, 0), itr->second(1, 0));
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, 0.25 * M_PI / 180, itr->second(0, 1), itr->second(1, 1));
                         rotate_point(itr->first.barycentric_x, itr->first.barycentric_y, 0.25 * M_PI / 180, itr->second(0, 2), itr->second(1, 2));
@@ -411,10 +425,11 @@ int main(void)
                     glDrawArrays(GL_TRIANGLES, 0, 3);
 
                     // wire loop should always be black
-                    if(!itr->first.color_changed){
+                    //if(!itr->first.color_changed){
                         change_color(*itr, 0.0, 0.0, 0.0);
                         glDrawArrays(GL_LINE_LOOP, 0, 3);
-                    }
+                    //}
+                    restore_color(*itr);
 
                 }
             }

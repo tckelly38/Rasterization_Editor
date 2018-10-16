@@ -43,20 +43,7 @@ void get_world_coordinates(GLFWwindow *window, double &xworld, double &yworld)
     xworld /= scale;
     yworld /= scale;
 }
-void change_color(std::pair<VertexBufferObject, Eigen::MatrixXf> &T, float r, float g, float b)
-{
-    T.second(3, 0) = r;
-    T.second(3, 1) = r;
-    T.second(3, 2) = r;
-    T.second(4, 0) = g;
-    T.second(4, 1) = g;
-    T.second(4, 2) = g;
-    T.second(5, 0) = b;
-    T.second(5, 1) = b;
-    T.second(5, 2) = b;
 
-    T.first.update(T.second);
-}
 void get_barycenter(std::pair<VertexBufferObject, Eigen::MatrixXf> &T)
 {
     double p0x = T.second(0, 0),
