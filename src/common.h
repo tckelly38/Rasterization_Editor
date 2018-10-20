@@ -3,7 +3,8 @@
 #include <vector>
 #include "Helpers.h"
 #include <GLFW/glfw3.h>
-extern std::vector<std::pair<VertexBufferObject, Eigen::MatrixXf>> V;//(MAX_TRIANGLES, std::make_pair(VertexBufferObject(), Eigen::MatrixXf::Zero(5, 1))); // no special std container care needed for non fixed size matrices
+
+extern std::vector<std::pair<VertexBufferObject, Eigen::MatrixXf>> V;
 extern bool insertion_mode_on;
 extern bool translation_mode_on;
 extern bool delete_mode_on;
@@ -26,10 +27,6 @@ void get_world_coordinates(GLFWwindow *window, double &xworld, double &yworld)
 {
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
-    // xpos -= lateral_adj;
-    // ypos -= longitudinal_adj;
-    // xpos /= scale;
-    // ypos /= scale;
 
     // Get the size of the window
     int width, height;

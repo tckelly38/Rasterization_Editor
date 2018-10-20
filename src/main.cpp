@@ -259,7 +259,7 @@ int main(void)
 #endif
 
     // Create a windowed mode window and its OpenGL context
-    window = glfwCreateWindow(800, 600, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "Assignment_2", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -370,13 +370,11 @@ int main(void)
                 {
                     if (itr->first.translating)
                     {
-                        //save_color(*itr);
                         change_color(*itr, 0.0, 0.0, 1.0);
                     }
                     else{
+                        // will default to red on first run through, then whatever was saved prior
                         restore_color(*itr);
-                        // if(!itr->first.color_changed)
-                        //     change_color(*itr, 1.0, 0.0, 0.0);
                         if(itr->first.color_changing){
                             if (blue_mode) change_color_vertice(*itr, 0, 0, 1);
                             else if(red_mode) change_color_vertice(*itr, 1, 0, 0); 
@@ -425,10 +423,10 @@ int main(void)
                     glDrawArrays(GL_TRIANGLES, 0, 3);
 
                     // wire loop should always be black
-                    //if(!itr->first.color_changed){
-                        change_color(*itr, 0.0, 0.0, 0.0);
-                        glDrawArrays(GL_LINE_LOOP, 0, 3);
-                    //}
+                    change_color(*itr, 0.0, 0.0, 0.0);
+                    glDrawArrays(GL_LINE_LOOP, 0, 3);
+                    
+                    // color has been chnaged to black, need to restore to prior color
                     restore_color(*itr);
 
                 }
