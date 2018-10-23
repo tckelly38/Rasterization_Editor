@@ -10,33 +10,26 @@ main.cpp contains the window initialization with `glfw`, and also contains the i
 ### 1.1 Triangle Soup
 Can insert MAX_TRIANGLE amount of triangles, which is defaulted to 25.
 
-#### 1.1 Triangle Soup Insertion Mode
-![Imgur](https://i.imgur.com/cQAC9nA.png)
-
-#### 1.1 Triangle Soup Translation Mode
-![Imgur](https://i.imgur.com/a9z81tV.png)
-
-#### 1.1 Triangle Soup Deletion Mode
-![Imgur](https://i.imgur.com/Myg4kHR.png)
+![insertion](./results/editor.gif)
 
 ### 1.2
 For this mode, I decided to get into the rotate/scale mode, the user must hit "R" before selecting the triangle, and then can use h, j, k, and l for rotation and scaling. Modifies the vertices before updating the VBO.
 
-#### 1.2 Rotation Mode
-![Imgur](https://i.imgur.com/ovllwrU.png)
+![rotate](./results/rotate.gif)
 
-#### 1.2 Scale Mode
-![Imgur](https://i.imgur.com/aY7pVEg.png)
 
 ### 1.3 Color Mode
 This mode updates the rgb values in the matrix for whichever vertex is closest to a click (if within a triangle). To change the color of a different triangle, it is recommended that you exit color mode by pressing "C" and then enter color mode again. Otherwise all triangles getting colored will change colors.
-![Imgur](https://i.imgur.com/BuDGjyi.png)
+![color](./results/color.gif)
 
 ### 1.4 View Control
 Global variables used to keep track of the modification on the original scalars (press "A" then say longitudinal increase by 0.2). This variable placed in the view matrix which be used as a uniform matrix in the vertex shader.
-![Imgur](https://i.imgur.com/1IjCB2P.png)
+
+![camera](./results/camera.gif)
 
 ### 1.5 Animation
-Not sure how to show this as a picture, but implementation relies on performing a rotation operation on each vertex of the triangle and updating the VBO on each frame.
+Implementation relies on performing a rotation operation on each vertex of the triangle and updating the VBO on each frame.
+
+![animate](./results/animate.gif)
 
 
